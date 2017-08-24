@@ -1,0 +1,41 @@
+.TH XSSPROXY 1
+.SH NAME
+xssproxy \- forward freedesktop.org Idle Inhibition Service calls to Xss
+.SH SYNOPSIS
+.B xssproxy
+[-v]
+.SH DESCRIPTION
+.B xssproxy
+implements the
+.I org.freedesktop.ScreenSaver
+D-Bus interface described in the Idle Inhibition Service Draft by the
+freedesktop.org developers.
+The inhibition of the screensaver is then controlled using the
+.I XScreenSaverSuspend
+function from the Xss (X11 Screen Saver extension) library.
+.SH OPTIONS
+.TP
+.B -v --verbose
+print messages when receiving inhibition requests
+.TP
+.B --version
+print version information and exit
+.SH EXAMPLES
+To use run in your
+.I ~/.xinitrc
+file.
+The program doesn't return so you need to run it in the background.
+.IP
+xssproxy &
+.SH AUTHOR
+Written by Tim Schumacher.
+.SH REPORTING BUGS
+Report bugs at the GitHub issue tracker
+<https://github.com/timakro/xssproxy/issues>.
+.SH COPYRIGHT
+Copyright (C) 2017 Tim Schumacher
+.PP
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+.PP
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent per‐mitted by law.
