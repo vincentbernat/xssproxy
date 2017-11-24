@@ -18,6 +18,21 @@ The program doesn't return so you need to run it in the background.
 
     xssproxy &
 
+## Installation
+
+### Debian
+
+    sudo apt-get install xssproxy
+
+### NixOS
+
+    nix-env -i xssproxy
+
+### Compiling
+
+    make
+    make install
+
 ## License
 
 Copyright (C) 2017 Tim Schumacher
