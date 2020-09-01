@@ -1,8 +1,9 @@
 bindir = /usr/local/bin
 man1dir = /usr/local/share/man/man1
 
+PKG_CONFIG ?= pkg-config
 CFLAGS = -std=c11 -Wall -pedantic -g -O3
-CFLAGS_ALL = `pkg-config --cflags --libs glib-2.0 x11 xscrnsaver dbus-1` $(CFLAGS)
+CFLAGS_ALL = `$(PKG_CONFIG) --cflags --libs glib-2.0 x11 xscrnsaver dbus-1` $(CFLAGS)
 
 .PHONY: all
 all: xssproxy xssproxy.1.gz
