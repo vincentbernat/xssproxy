@@ -33,14 +33,5 @@ The program doesn't return so you need to run it in the background.
     make
     make install
 
-## License
-
-Copyright (C) 2017 Tim Schumacher
-
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
-
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent per‐mitted by law.
-
 [idle-inhibition]: https://people.freedesktop.org/~hadess/idle-inhibition-spec/index.html
 [xss]: https://www.x.org/releases/X11R7.6/doc/man/man3/Xss.3.xhtml
