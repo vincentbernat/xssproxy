@@ -8,8 +8,9 @@
 #include <X11/extensions/scrnsaver.h>
 #include <dbus/dbus.h>
 
-int verbose = 0;
-int screensaver_on = 1;
+gboolean verbose = FALSE;
+gboolean version = FALSE;
+gboolean screensaver_on = FALSE;
 Display *display;
 GHashTable *apps;
 
@@ -28,7 +29,7 @@ void disable_screensaver()
 {
     if (!screensaver_on)
         return;
-    screensaver_on = 0;
+    screensaver_on = FALSE;
     vmsg("Disabling screensaver\n");
     XScreenSaverSuspend(display, 1);
     XFlush(display);
@@ -38,7 +39,7 @@ void enable_screensaver()
 {
     if (screensaver_on)
         return;
-    screensaver_on = 1;
+    screensaver_on = TRUE;
     vmsg("Enabling screensaver\n");
     XScreenSaverSuspend(display, 0);
     XFlush(display);
@@ -74,7 +75,8 @@ void display_init()
     }
 }
 
-void check_and_exit(DBusError *error) {
+void check_and_exit(DBusError *error)
+{
     if (dbus_error_is_set(error))
     {
         fprintf(stderr, "%s", error->message);
@@ -269,19 +271,28 @@ void apps_free_value(gpointer cookies)
     g_array_free(cookies, 1);
 }
 
+GOptionEntry entries[] =
+{
+    { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Display version and exit", NULL },
+    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
+    { NULL },
+};
+
 int main(int argc, char *argv[])
 {
-    if (argc >= 2)
+    GError *error = NULL;
+    GOptionContext *context;
+    context = g_option_context_new("- forward org.freedesktop.ScreenSaver calls to Xss");
+    g_option_context_add_main_entries(context, entries, "xssproxy");
+    if (!g_option_context_parse (context, &argc, &argv, &error))
     {
-        if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--verbose") == 0)
-        {
-            verbose = 1;
-        }
-        else if (strcmp(argv[1], "--version") == 0)
-        {
-            printf("xssproxy version 1.0.0\n");
-            exit(0);
-        }
+        printf("option parsing failed: %s\n", error->message);
+        exit(1);
+    }
+    if (version)
+    {
+        printf("xssproxy version 1.0.0\n");
+        exit(0);
     }
 
     display_init();
