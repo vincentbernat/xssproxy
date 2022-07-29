@@ -2,7 +2,7 @@ bindir = /usr/local/bin
 man1dir = /usr/local/share/man/man1
 
 PKG_CONFIG ?= pkg-config
-CFLAGS = -Wall -pedantic -g -O3
+CFLAGS = -Wall -g -O3
 CFLAGS_ALL = `$(PKG_CONFIG) --cflags --libs glib-2.0 x11 xscrnsaver dbus-1` -std=c11 $(CFLAGS)
 
 .PHONY: all
