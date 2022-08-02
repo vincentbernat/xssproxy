@@ -4,6 +4,7 @@ xssproxy \- forward freedesktop.org Idle Inhibition Service calls to Xss
 .SH SYNOPSIS
 .B xssproxy
 [-v]
+[-i APP]
 .SH DESCRIPTION
 .B xssproxy
 implements the
@@ -17,6 +18,9 @@ function from the Xss (X11 Screen Saver extension) library.
 .TP
 .B -v --verbose
 print messages when receiving inhibition requests
+.TP
+.B -i --ignore
+do not disable the screensaver for this application
 .TP
 .B --version
 print version information and exit

@@ -8,10 +8,17 @@
 #include <X11/extensions/scrnsaver.h>
 #include <dbus/dbus.h>
 
-int verbose = 0;
-int screensaver_on = 1;
+gboolean verbose = FALSE;
+gboolean version = FALSE;
+gboolean screensaver_on = TRUE;
 Display *display;
 GHashTable *apps;
+GHashTable *ignored;
+
+struct app {
+    GArray *cookies;
+    gboolean ignored;
+};
 
 void vmsg(const char *format, ...)
 {
@@ -24,11 +31,25 @@ void vmsg(const char *format, ...)
     fflush(stdout);
 }
 
+gboolean should_disable_screensaver()
+{
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, apps);
+    while (g_hash_table_iter_next(&iter, &key, &value))
+    {
+        struct app *app = value;
+        if (!app->ignored)
+            return TRUE;
+    }
+    return FALSE;
+}
+
 void disable_screensaver()
 {
     if (!screensaver_on)
         return;
-    screensaver_on = 0;
+    screensaver_on = FALSE;
     vmsg("Disabling screensaver\n");
     XScreenSaverSuspend(display, 1);
     XFlush(display);
@@ -38,7 +59,7 @@ void enable_screensaver()
 {
     if (screensaver_on)
         return;
-    screensaver_on = 1;
+    screensaver_on = TRUE;
     vmsg("Enabling screensaver\n");
     XScreenSaverSuspend(display, 0);
     XFlush(display);
@@ -74,7 +95,8 @@ void display_init()
     }
 }
 
-void check_and_exit(DBusError *error) {
+void check_and_exit(DBusError *error)
+{
     if (dbus_error_is_set(error))
     {
         fprintf(stderr, "%s", error->message);
@@ -82,10 +104,10 @@ void check_and_exit(DBusError *error) {
     }
 }
 
-void app_disconnect(const char* app)
+void app_disconnect(const char *app)
 {
     g_hash_table_remove(apps, app);
-    if (g_hash_table_size(apps) == 0)
+    if (!should_disable_screensaver())
         enable_screensaver();
 }
 
@@ -115,25 +137,27 @@ DBusHandlerResult handle_name_owner_change(DBusConnection *conn, DBusMessage *ms
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-uint32_t inhibit_request(const char *app)
+uint32_t inhibit_request(const char *sender, const char *app_name)
 {
-    GArray *cookies = g_hash_table_lookup(apps, app);
-    if (!cookies)
+    struct app *app = g_hash_table_lookup(apps, sender);
+    if (!app)
     {
-        disable_screensaver();
-
-        cookies = g_array_new(0, 0, sizeof(uint32_t));
-        g_hash_table_insert(apps, g_strdup(app), cookies);
+        app = g_malloc(sizeof(*app));
+        app->cookies = g_array_new(0, 0, sizeof(uint32_t));
+        app->ignored = g_hash_table_contains(ignored, app_name);
+        g_hash_table_insert(apps, g_strdup(sender), app);
     }
+    if (should_disable_screensaver())
+        disable_screensaver();
     int i;
-    for (i=0; i<cookies->len; i++)
+    for (i=0; i<app->cookies->len; i++)
     {
-        if (i != g_array_index(cookies, uint32_t, i))
+        if (i != g_array_index(app->cookies, uint32_t, i))
         {
             break;
         }
     }
-    g_array_insert_val(cookies, i, i);
+    g_array_insert_val(app->cookies, i, i);
     return i;
 }
 
@@ -154,7 +178,7 @@ void handle_inhibit(DBusConnection *conn, DBusMessage *msg)
 
     vmsg("Inhibit request app='%s' name='%s' reason='%s'\n",
          sender, application_name, reason_for_inhibit);
-    dbus_uint32_t cookie = inhibit_request(sender);
+    dbus_uint32_t cookie = inhibit_request(sender, application_name);
 
     DBusMessage *reply = dbus_message_new_method_return(msg);
     dbus_message_append_args(reply,
@@ -179,18 +203,18 @@ int find_cookie_index(GArray *cookies, uint32_t cookie)
     return ((char*)match - cookies->data) / sizeof(uint32_t);
 }
 
-void uninhibit_request(const char *app, uint32_t cookie)
+void uninhibit_request(const char *sender, uint32_t cookie)
 {
-    GArray *cookies = g_hash_table_lookup(apps, app);
-    if (!cookies)
+    struct app *app = g_hash_table_lookup(apps, sender);
+    if (!app)
         return;
-    int index = find_cookie_index(cookies, cookie);
+    int index = find_cookie_index(app->cookies, cookie);
     if (index == -1)
         return;
-    g_array_remove_index(cookies, index);
-    if (cookies->len == 0)
-        g_hash_table_remove(apps, app);
-    if (g_hash_table_size(apps) == 0)
+    g_array_remove_index(app->cookies, index);
+    if (app->cookies->len == 0)
+        g_hash_table_remove(apps, sender);
+    if (!should_disable_screensaver())
         enable_screensaver();
 }
 
@@ -259,36 +283,51 @@ DBusConnection *dbus_conn_init()
     return conn;
 }
 
-void apps_free_key(gpointer app)
+void apps_free_value(gpointer v)
 {
-    g_free(app);
+    struct app *app = v;
+    g_array_free(app->cookies, 1);
+    free(app);
 }
 
-void apps_free_value(gpointer cookies)
+gboolean add_ignored(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
-    g_array_free(cookies, 1);
+    g_hash_table_insert(ignored, g_strdup(value), NULL);
+    return TRUE;
 }
+
+GOptionEntry entries[] =
+{
+    { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Display version and exit", NULL },
+    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
+    { "ignore", 'i', 0, G_OPTION_ARG_CALLBACK, &add_ignored, "Ignore an application", "APP" },
+    { NULL },
+};
 
 int main(int argc, char *argv[])
 {
-    if (argc >= 2)
+    apps = g_hash_table_new_full(g_str_hash, g_str_equal,
+                                 g_free, apps_free_value);
+    ignored = g_hash_table_new_full(g_str_hash, g_str_equal,
+                                    g_free, NULL);
+
+    GError *error = NULL;
+    GOptionContext *context;
+    context = g_option_context_new("- forward org.freedesktop.ScreenSaver calls to Xss");
+    g_option_context_add_main_entries(context, entries, NULL);
+    if (!g_option_context_parse (context, &argc, &argv, &error))
     {
-        if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--verbose") == 0)
-        {
-            verbose = 1;
-        }
-        else if (strcmp(argv[1], "--version") == 0)
-        {
-            printf("xssproxy version 1.0.0\n");
-            exit(0);
-        }
+        printf("option parsing failed: %s\n", error->message);
+        exit(1);
+    }
+    if (version)
+    {
+        printf("xssproxy version 1.1.0\n");
+        exit(0);
     }
 
     display_init();
     DBusConnection *conn = dbus_conn_init();
-
-    apps = g_hash_table_new_full(g_str_hash, g_str_equal,
-                                 apps_free_key, apps_free_value);
 
     while (1)
     {

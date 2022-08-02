@@ -18,6 +18,8 @@ The program doesn't return so you need to run it in the background.
 
     xssproxy &
 
+To ignore some applications, like Firefox, use `-i firefox`.
+
 ## Installation
 
 ### Debian
