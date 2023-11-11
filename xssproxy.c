@@ -280,6 +280,11 @@ DBusConnection *dbus_conn_init()
         &vtable, NULL, &err);
     check_and_exit(&err);
 
+    dbus_connection_try_register_object_path(conn,
+        "/org/freedesktop/ScreenSaver",
+        &vtable, NULL, &err);
+    check_and_exit(&err);
+
     return conn;
 }
 
