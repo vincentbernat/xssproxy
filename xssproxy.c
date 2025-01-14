@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
     }
     if (version)
     {
-        printf("xssproxy version 1.1.0\n");
+        printf("xssproxy version 1.1.1\n");
         exit(0);
     }
 
