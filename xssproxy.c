@@ -144,7 +144,7 @@ uint32_t inhibit_request(const char *sender, const char *app_name)
     {
         app = g_malloc(sizeof(*app));
         app->cookies = g_array_new(0, 0, sizeof(uint32_t));
-        app->ignored = g_hash_table_contains(ignored, app_name);
+        app->ignored = g_hash_table_contains(ignored, app_name) || g_hash_table_contains(ignored, "*");
         g_hash_table_insert(apps, g_strdup(sender), app);
     }
     if (should_disable_screensaver())
