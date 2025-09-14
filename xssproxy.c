@@ -152,13 +152,14 @@ uint32_t inhibit_request(const char *sender, const char *app_name)
     int i;
     for (i=0; i<app->cookies->len; i++)
     {
-        if (i != g_array_index(app->cookies, uint32_t, i))
+        if (i + 1 != g_array_index(app->cookies, uint32_t, i))
         {
             break;
         }
     }
-    g_array_insert_val(app->cookies, i, i);
-    return i;
+    uint32_t cookie = i + 1;
+    g_array_insert_val(app->cookies, i, cookie);
+    return cookie;
 }
 
 void handle_inhibit(DBusConnection *conn, DBusMessage *msg)
